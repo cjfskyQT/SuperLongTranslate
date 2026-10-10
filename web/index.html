@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>超长文本翻译 · 突破 5000 字符限制</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">译</span>
+    <div>
+      <h1>超长文本翻译</h1>
+      <p class="sub">整段保结构 · 自动分段 · 无 5000 字符限制</p>
+    </div>
+  </div>
+  <div class="topright">
+    <span id="engineBadge" class="badge">引擎加载中…</span>
+    <button id="btnCheck" class="btn ghost sm" title="测试当前引擎是否可用">连通性自检</button>
+  </div>
+</header>
+
+<section class="controls">
+  <div class="field">
+    <label>翻译引擎</label>
+    <select id="engine">
+      <option value="google">Google（免费，无需密钥）</option>
+      <option value="baidu">百度翻译（官方 API，需密钥）</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>源语言</label>
+    <select id="srcLang"></select>
+  </div>
+  <div class="field">
+    <label>目标语言</label>
+    <select id="dstLang"></select>
+  </div>
+  <div class="field narrow">
+    <label>并发数</label>
+    <input id="concurrency" type="number" min="1" max="16" step="1" value="4">
+  </div>
+  <div class="field narrow">
+    <label>每片上限<span class="hint" id="unitHint">(字符)</span></label>
+    <input id="chunkLimit" type="number" min="0" step="100" value="0"
+           placeholder="自动">
+  </div>
+  <div class="field narrow">
+    <label>重试次数</label>
+    <input id="maxRetries" type="number" min="0" max="8" step="1" value="4">
+  </div>
+</section>
+
+<div id="credPanel" class="cred-panel hidden">
+  <div class="cred-title">百度开放平台凭据
+    <a href="https://fanyi-api.baidu.com/" target="_blank" rel="noopener">免费注册 →</a>
+  </div>
+  <div class="cred-row">
+    <input id="baiduAppid" type="text" placeholder="App ID">
+    <input id="baiduSecret" type="password" placeholder="Secret（留空则用已保存的）">
+    <button id="btnSaveCred" class="btn ghost sm">保存</button>
+  </div>
+  <p class="cred-note" id="credNote">
+    百度网页版内部接口已不可用（token 机制下线），故对接官方开放平台 API。
+    单次限制为 6000 字节，本工具会按字节自动切分。仅保存在本机 data/settings.json。
+  </p>
+</div>
+
+<main class="workspace">
+  <!-- 原文 -->
+  <section class="pane">
+    <div class="pane-head">
+      <h2>原文</h2>
+      <div class="pane-actions">
+        <button id="btnFile" class="btn ghost sm">导入 txt / md</button>
+        <button id="btnSample" class="btn ghost sm">示例</button>
+        <button id="btnClear" class="btn ghost sm">清空</button>
+        <input id="fileInput" type="file" accept=".txt,.md,.markdown,.csv,.srt,.vtt" hidden>
+      </div>
+    </div>
+    <textarea id="source" spellcheck="false"
+      placeholder="把要翻译的文本粘贴到这里，或拖入 txt 文件。&#10;&#10;不限长度：会按自然段自动分段，段落结构在译文中原样保留。"></textarea>
+    <div class="pane-foot">
+      <span id="srcCount">0 字符 · 0 段</span>
+      <span class="grow"></span>
+      <span id="splitInfo" class="muted"></span>
+    </div>
+  </section>
+
+  <!-- 译文 -->
+  <section class="pane">
+    <div class="pane-head">
+      <h2>译文</h2>
+      <div class="pane-actions">
+        <button id="btnPlay" class="btn ghost sm" disabled>🔊 朗读</button>
+        <button id="btnCopy" class="btn ghost sm" disabled>复制</button>
+        <label class="chk"><input type="checkbox" id="bom" checked> 带 BOM</label>
+        <button id="btnDownload" class="btn ghost sm" disabled>下载 .txt</button>
+      </div>
+    </div>
+
+    <div id="progress" class="progress hidden">
+      <div class="bar"><div id="barFill" class="fill"></div></div>
+      <div class="stats">
+        <span id="statMain">准备中…</span>
+        <span class="grow"></span>
+        <button id="btnCancel" class="btn ghost xs">取消</button>
+      </div>
+    </div>
+
+    <textarea id="target" spellcheck="false" readonly
+      placeholder="译文会显示在这里。"></textarea>
+
+    <div class="pane-foot">
+      <span id="dstCount">0 字符</span>
+      <span id="autoHint" class="auto-hint"></span>
+      <span class="grow"></span>
+      <span id="statLine" class="muted"></span>
+    </div>
+  </section>
+</main>
+
+<div id="goBar">
+  <div id="warnBox" class="warn hidden"></div>
+  <div class="go-actions">
+    <div id="hintLine" class="hint-line">就绪。整段翻译，超长文本会自动分段并保持段落结构。</div>
+    <span class="grow"></span>
+    <button id="btnSwap" class="btn ghost sm" title="把译文送回原文框">⇅ 回填</button>
+    <button id="btnGo" class="btn primary">开始翻译</button>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- 超长段落提示：让用户自己先分段，而不是让工具默默切碎 -->
+<div id="mask" class="mask hidden">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dgTitle">
+    <h3 id="dgTitle">有 <span id="dgCount">0</span> 个段落超过单次上限</h3>
+    <p class="modal-lead">
+      按段落切分是默认策略，这些段落因为<em>整段太长</em>无法整段下发。
+      建议你在这些段落的自然停顿处空一行（或输入换行）分成小段，译文会更自然。
+    </p>
+    <div id="dgList" class="dg-list"></div>
+    <div class="modal-actions">
+      <button id="btnSplit" class="btn primary">我去分段</button>
+      <button id="btnForce" class="btn ghost">忽略，仍自动切分</button>
+    </div>
+    <p class="modal-foot">自动切分会在段内句末标点处断开该段，可能影响译文连贯性。</p>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

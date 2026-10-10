@@ -1,0 +1,4 @@
+# 超长文本翻译 —— 运行依赖
+fastapi>=0.110
+uvicorn[standard]>=0.27
+httpx>=0.26

@@ -1,0 +1,30 @@
+# ---- 凭据与本地配置（含百度 appid/secret，绝不入库） ----
+data/
+*.local.json
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---- 测试与工具产物 ----
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---- 翻译输出 ----
+*_translated.txt
+译文_*.txt
