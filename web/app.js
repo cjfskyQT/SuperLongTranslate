@@ -128,7 +128,7 @@ function onEngineChange() {
     ? `自动 ${cfg.limit_bytes}` : `自动 ${cfg.limit_chars}`;
   el.chunkLimit.title = isBaidu
     ? '百度官方单次上限 6000 字节，留余量后为 5800'
-    : 'Google 端点实测可到 4 万字符以上；调大更快，调小更稳';
+    : 'Google 后端实际余量很宽；调大更快，调小更稳';
   updateBadge();
 }
 
