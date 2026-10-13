@@ -214,10 +214,33 @@ function clearAll() {
 
 function swap() {
   if (!el.target.value) return toast('译文为空，无法回填', 'err');
+
+  // 文本回填的同时把语言方向掉头：译文语言成为新源语言，原源语言成为新目标语言
+  const src = el.srcLang.value;
+  const dst = el.dstLang.value;
   el.source.value = el.target.value;
   el.target.value = '';
-  updateSourceStats();
-  toast('已回填到原文框', 'ok');
+  el.srcLang.value = dst;
+  el.dstLang.value = src;
+
+  updateSourceStats();   // 内部会对「自动检测」目标语种做兜底，故放在语言互换之后
+
+  localStorage.setItem('slt.langs', JSON.stringify([el.srcLang.value, el.dstLang.value]));
+
+  // 用互换后的实际取值提示：目标为「自动检测」时可能已被兜底改写
+  const same = el.srcLang.value === el.dstLang.value;
+  const dir = same
+    ? `源语言与目标语言同为${el.srcLang.value}，语言方向不变`
+    : `语言已互换：${el.srcLang.value} → ${el.dstLang.value}`;
+
+  // 正在翻译时不再触发第二次翻译，否则会出现两路并发流互相覆盖译文框
+  if (running) {
+    toast(`已回填到原文框（${dir}）。翻译进行中，未自动回译。`, 'ok');
+    return;
+  }
+
+  toast(`已回填到原文框（${dir}），正在回译…`, 'ok');
+  start();
 }
 
 function setOutputEnabled(on) {
